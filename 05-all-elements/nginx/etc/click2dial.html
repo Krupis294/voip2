@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Click2Dial</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #080c12;
+      --surface:  #0e1520;
+      --card:     #111a27;
+      --border:   #1c2d40;
+      --accent:   #00c8ff;
+      --green:    #00e87a;
+      --red:      #ff3355;
+      --amber:    #ffaa00;
+      --text:     #d8eaf8;
+      --muted:    #3d5870;
+      --mono:     'Share Tech Mono', monospace;
+      --sans:     'Rajdhani', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    /* Subtle grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,200,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,200,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Glow blobs */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 50% 40% at 20% 20%, rgba(0,200,255,0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 50% at 80% 80%, rgba(0,232,122,0.05) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 300px 240px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    /* ── CARD BASE ─────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 10%; right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.3;
+    }
+
+    /* ── HEADER ────────────────────────────── */
+    .app-header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .brand {
+      font-family: var(--mono);
+      font-size: 16px;
+      color: var(--accent);
+      letter-spacing: 3px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 32px; height: 32px;
+      border: 1.5px solid var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--accent);
+      font-size: 16px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.4s, box-shadow 0.4s;
+    }
+    .dot.idle     {}
+    .dot.ready    { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .dot.calling  { background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: pulse 0.9s infinite; }
+    .dot.success  { background: var(--green); box-shadow: 0 0 10px var(--green); }
+    .dot.error    { background: var(--red);   box-shadow: 0 0 8px var(--red); }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+    .status-text {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      transition: color 0.4s;
+      letter-spacing: 1px;
+    }
+    .status-text.ready   { color: var(--green); }
+    .status-text.calling { color: var(--amber); }
+    .status-text.success { color: var(--green); }
+    .status-text.error   { color: var(--red); }
+
+    /* ── PHONE CARD ────────────────────────── */
+    .phone-card {}
+
+    /* Extensions row */
+    .ext-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .ext-field label {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .ext-field input {
+      width: 100%;
+      background: #080c14;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 9px 12px;
+      font-family: var(--mono);
+      font-size: 18px;
+      color: var(--accent);
+      text-align: center;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      letter-spacing: 2px;
+    }
+    .ext-field input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(0,200,255,0.1);
+    }
+
+    .arrow-icon {
+      font-size: 20px;
+      color: var(--muted);
+      text-align: center;
+      padding-top: 20px;
+    }
+
+    /* Display */
+    .display {
+      background: #060a10;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      min-height: 60px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .display-label {
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .display-number {
+      font-family: var(--mono);
+      font-size: 28px;
+      color: var(--accent);
+      letter-spacing: 4px;
+      text-shadow: 0 0 16px rgba(0,200,255,0.35);
+      min-height: 34px;
+      word-break: break-all;
+    }
+    .display-number.placeholder { color: var(--muted); opacity: 0.4; font-size: 18px; padding-top: 6px; }
+
+    .cursor-blink {
+      display: inline-block;
+      width: 2px; height: 1.1em;
+      background: var(--accent);
+      vertical-align: middle;
+      margin-left: 2px;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50%{opacity:0} }
+
+    /* Dialpad */
+    .dialpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .key {
+      background: #0e1826;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 11px 4px 9px;
+      cursor: pointer;
+      text-align: center;
+      user-select: none;
+      transition: background 0.12s, border-color 0.12s, transform 0.08s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .key:hover  { background: #162234; border-color: rgba(0,200,255,0.3); }
+    .key:active { transform: scale(0.92); background: #0a1018; }
+
+    .key-num {
+      font-family: var(--mono);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .key-letters {
+      font-size: 8px;
+      color: var(--muted);
+      letter-spacing: 1.5px;
+      margin-top: 2px;
+    }
+
+    /* Action bar */
+    .action-bar {
+      display: grid;
+      grid-template-columns: 1fr 72px 1fr;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      width: 44px; height: 44px;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+      margin: 0 auto;
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+    .btn-call {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(145deg, #00e87a, #00a855);
+      color: #002a14;
+      font-size: 28px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 24px rgba(0,232,122,0.35);
+      transition: transform 0.15s, box-shadow 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-call::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.2), transparent 65%);
+    }
+    .btn-call:hover  { transform: scale(1.08); box-shadow: 0 6px 32px rgba(0,232,122,0.5); }
+    .btn-call:active { transform: scale(0.95); }
+    .btn-call:disabled {
+      background: linear-gradient(145deg, #1c3028, #111f18);
+      color: var(--muted);
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-call.calling {
+      background: linear-gradient(145deg, #ff3355, #c0002a);
+      color: white;
+      box-shadow: 0 4px 24px rgba(255,51,85,0.35);
+      animation: shake 0.6s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%,100%{transform:translateX(0)} 20%{transform:translateX(-4px)} 40%{transform:translateX(4px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)}
+    }
+
+    /* Timer strip */
+    .timer-strip {
+      margin-top: 12px;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--amber);
+      letter-spacing: 3px;
+      min-height: 16px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .timer-strip.visible { opacity: 1; }
+
+    /* ── SIDE COLUMN ───────────────────────── */
+    .side-col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .section-title {
+      font-size: 10px;
+      letter-spacing: 2.5px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-title::after {
+      content: ''; flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+    /* Quick dial presets */
+    .presets {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .preset-btn {
+      background: #0a1420;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: background 0.15s, border-color 0.15s;
+      text-align: left;
+    }
+    .preset-btn:hover { background: #10202e; border-color: rgba(0,200,255,0.25); }
+
+    .preset-avatar {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--border), #0e1826);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+
+    .preset-info { flex: 1; overflow: hidden; }
+    .preset-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .preset-ext {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    .preset-call-icon {
+      color: var(--green);
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .preset-btn:hover .preset-call-icon { opacity: 1; }
+
+    /* Call log */
+    .log-list {
+      list-style: none;
+      max-height: 180px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .log-entry {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(28,45,64,0.6);
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .log-entry:last-child { border-bottom: none; }
+    .log-entry:hover { opacity: 0.7; }
+
+    .log-icon { font-size: 12px; }
+    .log-icon.out { color: var(--accent); }
+    .log-icon.err { color: var(--red); }
+
+    .log-body { flex: 1; }
+    .log-num {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+    }
+    .log-meta {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    .log-time {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--muted);
+    }
+
+    .log-empty {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      padding: 20px 0;
+      opacity: 0.6;
+    }
+
+    /* ── TOAST ─────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 22px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+      z-index: 999;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.ok   { border-color: var(--green); color: var(--green); }
+    .toast.fail { border-color: var(--red);   color: var(--red); }
+
+    /* Responsive */
+    @media (max-width: 580px) {
+      .wrapper { grid-template-columns: 1fr; }
+      .app-header { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="app-header">
+    <div class="brand">
+      <div class="brand-icon">📞</div>
+      CLICK2DIAL
+    </div>
+    <div class="status-row">
+      <div class="dot" id="statusDot"></div>
+      <span class="status-text" id="statusText">PŘIPRAVENO</span>
+    </div>
+  </div>
+
+  <!-- Phone card -->
+  <div class="card phone-card">
+
+    <!-- From / To -->
+    <div class="ext-row">
+      <div class="ext-field">
+        <label>Z linky</label>
+        <input type="text" id="fromExt" value="10" maxlength="8" inputmode="numeric">
+      </div>
+      <div class="arrow-icon">→</div>
+      <div class="ext-field">
+        <label>Na linku</label>
+        <input type="text" id="toExt" value="11" maxlength="8" inputmode="numeric">
+      </div>
+    </div>
+
+    <!-- Display -->
+    <div class="display">
+      <div class="display-label">Volaný</div>
+      <div class="display-number" id="displayNum">
+        <span class="placeholder-text">—</span>
+      </div>
+    </div>
+
+    <!-- Dialpad -->
+    <div class="dialpad">
+      <button class="key" data-digit="1"><div class="key-num">1</div><div class="key-letters"></div></button>
+      <button class="key" data-digit="2"><div class="key-num">2</div><div class="key-letters">ABC</div></button>
+      <button class="key" data-digit="3"><div class="key-num">3</div><div class="key-letters">DEF</div></button>
+      <button class="key" data-digit="4"><div class="key-num">4</div><div class="key-letters">GHI</div></button>
+      <button class="key" data-digit="5"><div class="key-num">5</div><div class="key-letters">JKL</div></button>
+      <button class="key" data-digit="6"><div class="key-num">6</div><div class="key-letters">MNO</div></button>
+      <button class="key" data-digit="7"><div class="key-num">7</div><div class="key-letters">PQRS</div></button>
+      <button class="key" data-digit="8"><div class="key-num">8</div><div class="key-letters">TUV</div></button>
+      <button class="key" data-digit="9"><div class="key-num">9</div><div class="key-letters">WXYZ</div></button>
+      <button class="key" data-digit="*"><div class="key-num">*</div><div class="key-letters"></div></button>
+      <button class="key" data-digit="0"><div class="key-num">0</div><div class="key-letters">+</div></button>
+      <button class="key" data-digit="#"><div class="key-num">#</div><div class="key-letters"></div></button>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-bar">
+      <button class="btn-secondary" id="clearBtn" title="Smazat">⌫</button>
+      <button class="btn-call" id="callBtn" title="Zavolat">📞</button>
+      <button class="btn-secondary" id="clearAllBtn" title="Vymazat vše">✕</button>
+    </div>
+
+    <div class="timer-strip" id="timerStrip">⏱ VOLÁNÍ…</div>
+  </div>
+
+  <!-- Side column -->
+  <div class="side-col">
+
+    <!-- Quick dial -->
+    <div class="card">
+      <div class="section-title">Rychlá volba</div>
+      <div class="presets" id="presetsContainer">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <!-- Call log -->
+    <div class="card">
+      <div class="section-title">Historie</div>
+      <ul class="log-list" id="logList">
+        <li class="log-empty" id="logEmpty">žádné hovory</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  /* ── CONFIG ─────────────────────────────────────────── */
+  const PRESETS = [
+    { name: 'Recepce',    ext: '10', emoji: '🏢' },
+    { name: 'Dispečink',  ext: '11', emoji: '📡' },
+    { name: 'IT podpora', ext: '20', emoji: '💻' },
+    { name: 'Sklad',      ext: '30', emoji: '📦' },
+  ];
+
+  const API_URL = '/api/v1/call';   // Nginx proxy — zachováno beze změny
+  /* ──────────────────────────────────────────────────── */
+
+  const fromExtEl  = document.getElementById('fromExt');
+  const toExtEl    = document.getElementById('toExt');
+  const displayEl  = document.getElementById('displayNum');
+  const callBtn    = document.getElementById('callBtn');
+  const clearBtn   = document.getElementById('clearBtn');
+  const clearAllBtn= document.getElementById('clearAllBtn');
+  const statusDot  = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const timerStrip = document.getElementById('timerStrip');
+  const logList    = document.getElementById('logList');
+  const logEmpty   = document.getElementById('logEmpty');
+  const toastEl    = document.getElementById('toast');
+
+  let calling = false;
+  let timerInterval = null;
+  let callLog = [];
+
+  /* ── DISPLAY SYNC ────────────────────────────────────── */
+  function updateDisplay() {
+    const val = toExtEl.value.trim();
+    if (val) {
+      displayEl.innerHTML = val + '<span class="cursor-blink"></span>';
+      displayEl.classList.remove('placeholder');
+    } else {
+      displayEl.innerHTML = '<span class="placeholder-text" style="color:var(--muted);font-size:18px;opacity:0.4">—</span>';
+    }
+  }
+
+  toExtEl.addEventListener('input', updateDisplay);
+  updateDisplay();
+
+  /* ── DIALPAD ─────────────────────────────────────────── */
+  document.querySelectorAll('.key').forEach(key => {
+    key.addEventListener('click', () => {
+      if (calling) return;
+      const d = key.dataset.digit;
+      toExtEl.value += d;
+      updateDisplay();
+      // tiny vibration on mobile
+      if (navigator.vibrate) navigator.vibrate(20);
+    });
+  });
+
+  clearBtn.addEventListener('click', () => {
+    if (calling) return;
+    toExtEl.value = toExtEl.value.slice(0, -1);
+    updateDisplay();
+  });
+
+  clearAllBtn.addEventListener('click', () => {
+    if (calling) return;
+    toExtEl.value = '';
+    updateDisplay();
+  });
+
+  /* ── KEYBOARD ────────────────────────────────────────── */
+  document.addEventListener('keydown', e => {
+    if (e.target === fromExtEl) return;
+    if (/^[0-9*#]$/.test(e.key) && !calling) {
+      toExtEl.value += e.key;
+      updateDisplay();
+    }
+    if (e.key === 'Backspace' && !calling) {
+      toExtEl.value = toExtEl.value.slice(0, -1);
+      updateDisplay();
+    }
+    if (e.key === 'Enter') makeCall();
+    if (e.key === 'Escape') {
+      toExtEl.value = '';
+      updateDisplay();
+    }
+  });
+
+  /* ── STATUS ──────────────────────────────────────────── */
+  function setStatus(state, label) {
+    statusDot.className = 'dot ' + state;
+    statusText.className = 'status-text ' + state;
+    statusText.textContent = label;
+  }
+
+  /* ── TIMER ───────────────────────────────────────────── */
+  function startTimer() {
+    let sec = 0;
+    timerStrip.classList.add('visible');
+    timerInterval = setInterval(() => {
+      sec++;
+      const m = String(Math.floor(sec/60)).padStart(2,'0');
+      const s = String(sec % 60).padStart(2,'0');
+      timerStrip.textContent = `⏱ ${m}:${s}`;
+    }, 1000);
+  }
+
+  function stopTimer() {
+    clearInterval(timerInterval);
+    timerStrip.classList.remove('visible');
+    timerStrip.textContent = '';
+  }
+
+  /* ── TOAST ───────────────────────────────────────────── */
+  let toastTimeout;
+  function showToast(msg, type = '') {
+    clearTimeout(toastTimeout);
+    toastEl.textContent = msg;
+    toastEl.className = 'toast show ' + type;
+    toastTimeout = setTimeout(() => { toastEl.className = 'toast'; }, 3200);
+  }
+
+  /* ── CALL LOG ────────────────────────────────────────── */
+  function addLog(from, to, ok) {
+    const now = new Date();
+    const time = now.toLocaleTimeString('cs-CZ', { hour:'2-digit', minute:'2-digit' });
+    callLog.unshift({ from, to, ok, time });
+    if (callLog.length > 20) callLog.pop();
+    renderLog();
+  }
+
+  function renderLog() {
+    logEmpty.style.display = callLog.length ? 'none' : '';
+    // remove old entries
+    logList.querySelectorAll('.log-entry').forEach(el => el.remove());
+
+    callLog.forEach(entry => {
+      const li = document.createElement('li');
+      li.className = 'log-entry';
+      li.innerHTML = `
+        <span class="log-icon ${entry.ok ? 'out' : 'err'}">${entry.ok ? '↗' : '✗'}</span>
+        <div class="log-body">
+          <div class="log-num">${entry.from} → ${entry.to}</div>
+          <div class="log-meta">${entry.ok ? 'Voláno' : 'Chyba'}</div>
+        </div>
+        <span class="log-time">${entry.time}</span>
+      `;
+      li.addEventListener('click', () => {
+        toExtEl.value = entry.to;
+        fromExtEl.value = entry.from;
+        updateDisplay();
+      });
+      logList.appendChild(li);
+    });
+  }
+
+  /* ── PRESETS ─────────────────────────────────────────── */
+  const presetsContainer = document.getElementById('presetsContainer');
+  PRESETS.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn';
+    btn.innerHTML = `
+      <div class="preset-avatar">${p.emoji}</div>
+      <div class="preset-info">
+        <div class="preset-name">${p.name}</div>
+        <div class="preset-ext">linka ${p.ext}</div>
+      </div>
+      <span class="preset-call-icon">📞</span>
+    `;
+    btn.addEventListener('click', () => {
+      toExtEl.value = p.ext;
+      updateDisplay();
+      makeCall();
+    });
+    presetsContainer.appendChild(btn);
+  });
+
+  /* ── MAKE CALL ───────────────────────────────────────── */
+  callBtn.addEventListener('click', makeCall);
+
+  async function makeCall() {
+    if (calling) return;
+    const from = fromExtEl.value.trim();
+    const to   = toExtEl.value.trim();
+
+    if (!from || !to) {
+      showToast('Zadejte zdrojovou a cílovou linku', 'fail');
+      return;
+    }
+
+    calling = true;
+    callBtn.disabled = true;
+    callBtn.classList.add('calling');
+    callBtn.textContent = '📵';
+    setStatus('calling', 'VOLÁNÍ…');
+    startTimer();
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from_ext: from, to_ext: to })
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      setStatus('success', 'HOVOR ZAHÁJEN');
+      showToast(data.message || `✓ Volání ${from} → ${to} zahájeno`, 'ok');
+      addLog(from, to, true);
+
+      // reset status after 3s
+      setTimeout(() => setStatus('ready', 'PŘIPRAVENO'), 3000);
+
+    } catch (err) {
+      console.error(err);
+      setStatus('error', 'CHYBA VOLÁNÍ');
+      showToast(`✗ Chyba: ${err.message}`, 'fail');
+      addLog(from, to, false);
+      setTimeout(() => setStatus('idle', 'PŘIPRAVENO'), 3000);
+    } finally {
+      calling = false;
+      callBtn.disabled = false;
+      callBtn.classList.remove('calling');
+      callBtn.textContent = '📞';
+      stopTimer();
+    }
+  }
+
+  /* ── INIT ────────────────────────────────────────────── */
+  setStatus('idle', 'PŘIPRAVENO');
+</script>
+</body>
+</html>

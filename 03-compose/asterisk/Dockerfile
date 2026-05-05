@@ -1,21 +1,24 @@
+# ================================
 # BUILD PHASE
-FROM debian:latest as builder
-LABEL maintainer='Jan Rozhon <jan@rozhon.eu>'
+# ================================
+FROM debian:11-slim AS builder
+LABEL maintainer="Jan Rozhon <jan@rozhon.eu>"
 
 RUN apt update -qq && \
-    DEBIAN_FRONTEND=noninteractive \
-    apt install -y --no-install-recommends \
+    DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends \
         autoconf \
-        file \
-        binutils-dev \
         build-essential \
+        binutils-dev \
         ca-certificates \
         curl \
+        file \
         less \
         libcurl4-openssl-dev \
         libedit-dev \
         libgsm1-dev \
         libogg-dev \
+        libopus-dev \
+        libjansson-dev \
         libpopt-dev \
         libresample1-dev \
         libspandsp-dev \
@@ -25,59 +28,58 @@ RUN apt update -qq && \
         libssl-dev \
         libvorbis-dev \
         libxml2-dev \
-        libxslt1-dev \
+        libxslt-dev \
         libsrtp2-dev \
-        libncurses5 ncurses-bin ncurses-term \
+        libncurses5-dev \
+        libtinfo-dev \
+        ncurses-bin \
+        ncurses-term \
+        libunwind-dev \
         portaudio19-dev \
         procps \
         python3-pip \
         tcpdump \
         unixodbc-dev \
-        uuid \
-        uuid-dev \
+        uuid-runtime \
         vim-tiny \
         xmlstarlet \
-        && \
-    apt purge -y --auto-remove && rm -rf /var/lib/apt/lists/*
+        cmake \
+        pkg-config && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN useradd --system asterisk
+RUN useradd --system --home /home/asterisk asterisk
 
-ENV ASTERISK_VERSION=20.6.0
-
-RUN mkdir /usr/src/asterisk
+ENV ASTERISK_VERSION=20.5.2
 WORKDIR /usr/src/asterisk
 
 ADD http://downloads.asterisk.org/pub/telephony/asterisk/releases/asterisk-${ASTERISK_VERSION}.tar.gz asterisk.tar.gz
-RUN tar --strip-components 1 -xzf asterisk.tar.gz
-RUN ./configure  --with-resample --with-jansson-bundled
-RUN make menuselect/menuselect menuselect-tree menuselect.makeopts
+RUN tar --strip-components=1 -xzf asterisk.tar.gz
 
-# disable BUILD_NATIVE to avoid platform issues
+RUN ./configure --with-resample --with-jansson-bundled
+RUN make menuselect/menuselect menuselect.makeopts
+
 RUN menuselect/menuselect --disable BUILD_NATIVE menuselect.makeopts && \
     menuselect/menuselect --enable BETTER_BACKTRACES menuselect.makeopts && \
     menuselect/menuselect --enable codec_opus menuselect.makeopts
 
 RUN make all
-
 RUN make install && \
-    # make samples && \
     make basic-pbx && \
     make progdocs
-    
-RUN chown -R asterisk:asterisk /var/*/asterisk && \
-    chmod -R 750 /var/spool/asterisk
 
+RUN chown -R asterisk:asterisk /var/*/asterisk && chmod -R 750 /var/spool/asterisk
 
-##################################################################################3
+RUN mkdir -p /etc/asterisk && \
+    cp /usr/src/asterisk/configs/basic-pbx/*.conf /etc/asterisk/ && \
+    chown -R asterisk:asterisk /etc/asterisk
+
+# ================================
 # FINAL CONTAINER
-FROM debian:latest as final
-
-ARG db_url
-ENV DB_URL="$db_url"
+# ================================
+FROM debian:11-slim AS final
 
 RUN apt update -qq && \
-    DEBIAN_FRONTEND=noninteractive \
-    apt install -y --no-install-recommends \
+    DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends \
         file \
         binutils-dev \
         libedit-dev \
@@ -95,16 +97,14 @@ RUN apt update -qq && \
         unixodbc \
         postgresql-client \
         odbc-postgresql \
-        uuid \
+        uuid-runtime \
         vim-tiny \
         xmlstarlet \
         iproute2 \
-        sqlite3 \
-        && \
-    apt purge -y --auto-remove && rm -rf /var/lib/apt/lists/*
+        sqlite3 && \
+    rm -rf /var/lib/apt/lists/*
 
-
-RUN useradd --system asterisk
+RUN useradd --system --home /home/asterisk asterisk
 
 COPY --from=builder --chown=asterisk:asterisk /usr/lib/libasterisk* /usr/lib/
 COPY --from=builder --chown=asterisk:asterisk /usr/lib/asterisk/ /usr/lib/asterisk/
@@ -112,15 +112,10 @@ COPY --from=builder --chown=asterisk:asterisk /usr/sbin/asterisk /usr/sbin/aster
 COPY --from=builder --chown=asterisk:asterisk /var/spool/asterisk/ /var/spool/asterisk/
 COPY --from=builder --chown=asterisk:asterisk /var/lib/asterisk/ /var/lib/asterisk/
 COPY --from=builder --chown=asterisk:asterisk /var/run/asterisk/ /var/run/asterisk/
-# mkdir for the following does not allow chown in the next step
 COPY --from=builder --chown=asterisk:asterisk /var/log/asterisk/ /var/log/asterisk/
-
-RUN mkdir -p /etc/asterisk/
-
-RUN chown -R asterisk:asterisk  /etc/asterisk
-
+COPY --from=builder --chown=asterisk:asterisk /etc/asterisk/ /etc/asterisk/
 
 WORKDIR /home/asterisk
 USER asterisk
 
-CMD asterisk -f
+CMD ["asterisk", "-f"]

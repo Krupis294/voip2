@@ -7,3 +7,4 @@ COPY ./etc/nginx/ssl-params.conf /etc/nginx/snippets/ssl-params.conf
 COPY ./etc/nginx/self-signed.conf /etc/nginx/snippets/self-signed.conf
 
 COPY ./etc/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY ./etc/click2dial.html /usr/share/nginx/html

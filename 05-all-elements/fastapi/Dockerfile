@@ -1,37 +1,26 @@
-FROM python:3.11-bookworm as build-stage
+FROM python:3.11-bookworm
 
-ENV VENV_PATH="/app/venv"
-
-RUN mkdir app
 WORKDIR /app
-RUN python3 -m venv $VENV_PATH
-RUN $VENV_PATH/bin/pip install -U pip setuptools
-RUN $VENV_PATH/bin/pip install poetry
 
-ENV PATH="$VENV_PATH/bin:$PATH"
+# Install Poetry
+RUN pip install --upgrade pip setuptools \
+    && pip install poetry
 
-COPY ./ .
+# Copy dependency files
+COPY pyproject.toml poetry.lock ./
 
-RUN poetry install
-RUN poetry build
+# Install dependencies globally (no venv)
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-root --no-interaction --no-ansi
 
+# Ensure uvicorn is installed
+RUN pip install uvicorn
 
-FROM python:3.11-bookworm as production-stage
+# Copy app code
+COPY voip2_backend voip2_backend
 
-ARG db_url
-ENV DATABASE_URL="$db_url"
+ENV PYTHONPATH=/app
+EXPOSE 8080
 
-ENV VENV_PATH="/app/venv"
-
-RUN mkdir app
-WORKDIR /app
-RUN python3 -m venv $VENV_PATH
-COPY --from=build-stage /app/dist/*.whl /app
-
-RUN $VENV_PATH/bin/pip install /app/*.whl
-ENV PATH="$VENV_PATH/bin:$PATH"
-
-# expose port locally, so we can test the container
-EXPOSE 80
-
-CMD ["voip2be"]
+# Run FastAPI
+CMD ["python", "-m", "uvicorn", "voip2_backend.main:app", "--host", "0.0.0.0", "--port", "8080"]
