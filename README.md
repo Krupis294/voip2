@@ -2,9 +2,9 @@
 
 ### Globální změny (opakují se ve všech adresářích)
 
-**Dockerfiles — base image** Všechny Dockerfiles z `debian:latest` na `debian:11-slim`
+**Dockerfiles — base image** Všechny Dockerfiles z `debian:latest` na `debian:12-slim`
 
-**Dockerfiles — čistění apt cache** `apt purge -y --auto-remove` nahrazeno `apt-get clean && rm -rf /var/lib/apt/lists/*`
+**Dockerfiles — čistění apt cache** `apt purge -y --auto-remove` nahrazeno `apt clean && rm -rf /var/lib/apt/lists/*`
 
 **Dockerfiles — uživatel asterisk** `--home /home/asterisk` - přidán správný domovský adresář
 

@@ -1,7 +1,7 @@
 # ================================
 # BUILD PHASE
 # ================================
-FROM debian:11-slim AS builder
+FROM debian:12-slim AS builder
 LABEL maintainer="Jan Rozhon <jan@rozhon.eu>"
 
 RUN apt update -qq && \
@@ -77,7 +77,7 @@ RUN sed -i -E 's/^;(run)(user|group)/\1\2/' /etc/asterisk/asterisk.conf
 # ================================
 # FINAL CONTAINER
 # ================================
-FROM debian:11-slim AS final
+FROM debian:12-slim AS final
 
 RUN apt update -qq && \
     DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends \

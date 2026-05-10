@@ -1,7 +1,7 @@
 # ================================
 # BUILD PHASE
 # ================================
-FROM debian:11-slim AS builder
+FROM debian:12-slim AS builder
 LABEL maintainer="Jan Rozhon <jan@rozhon.eu>"
 
 RUN apt update -qq && \
@@ -49,7 +49,7 @@ RUN apt update -qq && \
 
 RUN useradd --system --home /home/asterisk asterisk
 
-ENV ASTERISK_VERSION=20.5.2
+ENV ASTERISK_VERSION=20.6.0
 WORKDIR /usr/src/asterisk
 
 ADD http://downloads.asterisk.org/pub/telephony/asterisk/releases/asterisk-${ASTERISK_VERSION}.tar.gz asterisk.tar.gz
@@ -79,7 +79,7 @@ RUN mkdir -p /etc/asterisk && \
 # ================================
 # FINAL CONTAINER
 # ================================
-FROM debian:11-slim AS final
+FROM debian:12-slim AS final
 
 
 RUN apt update -qq && \

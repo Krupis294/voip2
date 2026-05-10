@@ -1,8 +1,8 @@
 FROM debian:12-slim
 LABEL maintainer="Jan Rozhon <jan@rozhon.eu>"
 
-RUN apt-get update -qq && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN apt update -qq && \
+    DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends \
         autoconf \
         file \
         binutils-dev \
@@ -36,7 +36,7 @@ RUN apt-get update -qq && \
         uuid-dev \
         vim-tiny \
         xmlstarlet && \
-    apt-get clean && \
+    apt clean && \
     rm -rf /var/lib/apt/lists/*
 
 RUN useradd --system asterisk
