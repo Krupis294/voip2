@@ -76,7 +76,7 @@ RUN mkdir -p /etc/asterisk && \
 # ================================
 # FINAL CONTAINER
 # ================================
-FROM debian:1-slim AS final
+FROM debian:12-slim AS final
 
 RUN apt update -qq && \
     DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends \
